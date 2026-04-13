@@ -52,6 +52,7 @@ def test_target_features_use_history_only():
             "player_2": ["D"],
             "surface": ["Hard"],
             "tour": ["ATP"],
+            "p1_win": [0],  # should be ignored for target rows
         }
     )
     out = add_features_with_history(hist, upcoming, recent_windows=[2])

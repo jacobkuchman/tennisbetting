@@ -1,114 +1,162 @@
-# Tennis Betting Model - Phase 1 (Moneyline End-to-End)
+# Tennis Betting Model - Phase 1 (Moneyline Only)
 
-This repo currently implements **Phase 1 only** for pre-match tennis betting:
+This repository currently supports **Phase 1 only**: pre-match tennis **moneyline** modeling and +EV detection.
 
-1. Load/normalize historical match + moneyline odds data
+It does **not** yet include production side-market pricing (spreads/totals/first-set/correct-score).
+
+---
+
+## What Phase 1 does end-to-end
+
+1. Load and normalize historical match + odds data
 2. Build leak-safe pre-match features (including Elo)
-3. Train calibrated logistic regression for match winner
+3. Train calibrated logistic regression for match winner probability
 4. Remove vig from two-way moneyline odds
-5. Compute fair odds and expected value (EV)
-6. Run a simple walk-forward backtest
-7. Generate daily moneyline picks from upcoming matches
-
-> Side markets (spread/totals/first-set/correct-score) are intentionally deferred until this pipeline is stable.
+5. Convert probabilities to fair odds and compute EV/edge
+6. Run walk-forward backtest (past-only training)
+7. Generate daily picks for upcoming matches
 
 ---
 
-## Project layout (relevant for Phase 1)
+## Clean local setup (exact commands)
 
-- `data/raw/historical_matches.csv` - sample historical input
-- `data/raw/upcoming_matches.csv` - sample upcoming matches input
-- `data/processed/model_dataset.csv` - generated training dataset
-- `src/data/` - loading + normalization
-- `src/features/` - Elo and feature engineering
-- `src/models/match_winner.py` - baseline model + evaluation
-- `src/pricing/odds.py` - vig removal, implied/fair odds, EV
-- `src/backtest/engine.py` - walk-forward backtest
-- `scripts/prepare_data.py`
-- `scripts/train_match_winner.py`
-- `scripts/run_backtest.py`
-- `scripts/daily_picks.py`
-
----
-
-## Installation
+Run from repo root:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+python scripts/prepare_data.py
+python scripts/train_match_winner.py
+python scripts/run_backtest.py
+python scripts/daily_picks.py
 ```
 
 ---
 
-## Exact run commands (Phase 1)
+## Expected outputs by command
 
-### 1) Build processed dataset
-```bash
-python scripts/prepare_data.py
-```
+### `python scripts/prepare_data.py`
+Creates:
+- `data/processed/model_dataset.csv`
 
-### 2) Train baseline logistic regression
-```bash
-python scripts/train_match_winner.py
-```
-
-Outputs:
+### `python scripts/train_match_winner.py`
+Creates:
 - `outputs/models/match_winner_logreg.joblib`
 - `outputs/models/match_winner_eval_predictions.csv`
 
-### 3) Run walk-forward backtest
-```bash
-python scripts/run_backtest.py
-```
+Prints:
+- baseline test metrics (`log_loss`, `brier`, and `auc` when available)
 
-Output examples:
+### `python scripts/run_backtest.py`
+Creates (per configured edge threshold):
 - `outputs/backtest_bets_edge_2.csv`
 - `outputs/backtest_bets_edge_3.csv`
 - `outputs/backtest_bets_edge_4.csv`
 
-### 4) Generate daily picks from upcoming matches
-```bash
-python scripts/daily_picks.py
-```
+Prints:
+- bets, hit rate, average edge, stake totals, pnl, roi, max drawdown
 
-Output:
+### `python scripts/daily_picks.py`
+Creates:
 - `outputs/picks/daily_picks.csv`
+
+Prints:
+- readable picks table sorted by edge
 
 ---
 
-## Input schema (minimum)
+## Real-data schema (required columns)
 
-Historical and upcoming CSVs should include (as available):
+You can plug in any source as long as you provide the columns below.
 
-- `match_date`, `tournament`, `tour`, `surface`, `round`
-- `player_1`, `player_2`
-- `rank_p1`, `rank_p2` (optional but recommended)
-- `odds_p1`, `odds_p2` (required for pricing/EV)
-- `p1_win` or `winner_name` (historical only)
+### Required for `data/raw/historical_matches.csv`
 
-Optional performance fields used if present:
+| Column | Type | Required | Notes |
+|---|---|---:|---|
+| `match_date` | date/datetime | ✅ | parseable by pandas |
+| `player_1` | string | ✅ | model is framed as P1 vs P2 |
+| `player_2` | string | ✅ | |
+| `tournament` | string | ✅ | |
+| `tour` | string | ✅ | e.g. ATP, WTA |
+| `surface` | string | ✅ | Hard/Clay/Grass/etc |
+| `round` | string | ✅ | |
+| `odds_p1` | float | ✅ | decimal moneyline for P1 |
+| `odds_p2` | float | ✅ | decimal moneyline for P2 |
+| `p1_win` | 0/1 | ✅* | required unless `winner_name` exists |
+| `winner_name` | string | ✅* | optional if `p1_win` provided |
 
+`*` At least one target source must exist: either `p1_win`, or `winner_name` from which `p1_win` can be derived.
+
+### Required for `data/raw/upcoming_matches.csv`
+
+| Column | Type | Required | Notes |
+|---|---|---:|---|
+| `match_date` | date/datetime | ✅ | upcoming/premarket date |
+| `player_1` | string | ✅ | |
+| `player_2` | string | ✅ | |
+| `tournament` | string | ✅ | |
+| `tour` | string | ✅ | ATP/WTA recommended |
+| `surface` | string | ✅ | |
+| `round` | string | ✅ | |
+| `odds_p1` | float | ✅ | decimal moneyline |
+| `odds_p2` | float | ✅ | decimal moneyline |
+
+### Optional feature columns (used when present)
+
+- `rank_p1`, `rank_p2`
+- `tournament_tier`
 - `p1_serve_points_won_pct`, `p2_serve_points_won_pct`
 - `p1_return_points_won_pct`, `p2_return_points_won_pct`
 - `p1_hold_pct`, `p2_hold_pct`
 - `p1_break_pct`, `p2_break_pct`
 - `total_games`
+- `indoor`
 
 ---
 
-## Leakage controls
+## Leakage controls in this implementation
 
-- Features are generated chronologically, row by row.
-- Historical states update **after** feature creation for each row.
-- Upcoming picks use `historical + upcoming` in time order, with upcoming outcomes blank, so future results cannot leak.
-- Backtesting retrains using only matches before each prediction date.
+- Features are generated in chronological order.
+- Player histories update **after** each row’s features are built.
+- Upcoming rows are featurized with historical context while their outcomes are forced to null.
+- Walk-forward backtest retrains only on matches before each prediction date.
 
 ---
 
-## Current status
+## Troubleshooting
 
-- ✅ Moneyline Phase 1 pipeline implemented end-to-end.
-- ✅ Includes synthetic sample data for local dry runs.
-- ⚠️ Sample data is placeholder/synthetic and must be replaced with real ATP/WTA + sportsbook feeds for production use.
+### `ModuleNotFoundError: pandas` / `numpy` / `sklearn`
+Install dependencies inside an active virtual environment:
+
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### `Missing data/processed/model_dataset.csv`
+Run:
+
+```bash
+python scripts/prepare_data.py
+```
+
+### `Model missing. Run: python scripts/train_match_winner.py`
+Run:
+
+```bash
+python scripts/train_match_winner.py
+```
+
+### Not enough rows for train/test split
+Adjust `model.test_start_date` in `config/example_config.yaml` or provide more historical rows.
+
+### Odds format errors
+Current pipeline expects **decimal odds** in `odds_p1` and `odds_p2`.
+
+---
+
+## Placeholder data warning
+
+`data/raw/historical_matches.csv` and `data/raw/upcoming_matches.csv` are synthetic examples for dry-run structure checks only. Replace them with real ATP/WTA and sportsbook data before production use.
 
