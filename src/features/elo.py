@@ -10,8 +10,7 @@ def expected_score(rating_a: float, rating_b: float) -> float:
 
 
 def compute_elo_features(df: pd.DataFrame, k_factor: float = 24.0) -> pd.DataFrame:
-    data = df.copy()
-    data = data.sort_values("match_date").reset_index(drop=True)
+    data = df.copy().sort_values("match_date").reset_index(drop=True)
 
     overall = defaultdict(lambda: 1500.0)
     by_surface = defaultdict(lambda: 1500.0)
@@ -39,7 +38,6 @@ def compute_elo_features(df: pd.DataFrame, k_factor: float = 24.0) -> pd.DataFra
             p1_win = float(row["p1_win"])
             exp1 = expected_score(e1, e2)
             exp1_s = expected_score(se1, se2)
-
             overall[p1] = e1 + k_factor * (p1_win - exp1)
             overall[p2] = e2 + k_factor * ((1 - p1_win) - (1 - exp1))
             by_surface[(p1, surface)] = se1 + k_factor * (p1_win - exp1_s)
@@ -52,3 +50,18 @@ def compute_elo_features(df: pd.DataFrame, k_factor: float = 24.0) -> pd.DataFra
     data["surface_elo_p2"] = s_elo_p2_list
     data["surface_elo_diff"] = data["surface_elo_p1"] - data["surface_elo_p2"]
     return data
+
+
+def compute_elo_with_history(historical_df: pd.DataFrame, target_df: pd.DataFrame, k_factor: float = 24.0) -> pd.DataFrame:
+    """Compute ELO for target rows using only historical row outcomes."""
+    hist = historical_df.copy()
+    tgt = target_df.copy()
+    hist["_is_target"] = 0
+    tgt["_is_target"] = 1
+    if "p1_win" not in tgt.columns:
+        tgt["p1_win"] = pd.NA
+    tgt["p1_win"] = pd.NA
+
+    combo = pd.concat([hist, tgt], ignore_index=True, sort=False).sort_values("match_date").reset_index(drop=True)
+    combo = compute_elo_features(combo, k_factor=k_factor)
+    return combo[combo["_is_target"] == 1].drop(columns=["_is_target"]).reset_index(drop=True)

@@ -12,6 +12,7 @@ def _safe_get(row: pd.Series, key: str, default: float = np.nan) -> float:
 
 
 def add_prematch_features(df: pd.DataFrame, recent_windows: list[int] | None = None) -> pd.DataFrame:
+    """Build row-wise pre-match features using only prior rows in chronological order."""
     recent_windows = recent_windows or [5, 10]
     data = df.copy().sort_values("match_date").reset_index(drop=True)
 
@@ -54,7 +55,6 @@ def add_prematch_features(df: pd.DataFrame, recent_windows: list[int] | None = N
 
         feat["h2h_weighted_diff"] = h2h[(p1, p2)] - h2h[(p2, p1)]
         feat["is_atp"] = 1 if str(tour).upper() == "ATP" else 0
-
         feat["tournament_tier"] = _safe_get(row, "tournament_tier", 0)
 
         feat["serve_points_won_diff"] = _safe_get(row, "p1_serve_points_won_pct") - _safe_get(row, "p2_serve_points_won_pct")
@@ -64,6 +64,7 @@ def add_prematch_features(df: pd.DataFrame, recent_windows: list[int] | None = N
 
         out_rows.append(feat)
 
+        # Only update histories after generating features for this row (prevents leakage).
         if pd.notna(row.get("p1_win")):
             p1_win = float(row["p1_win"])
             win_hist[p1].append(p1_win)
@@ -84,6 +85,28 @@ def add_prematch_features(df: pd.DataFrame, recent_windows: list[int] | None = N
     return pd.concat([data.reset_index(drop=True), features], axis=1)
 
 
+def add_features_with_history(
+    historical_df: pd.DataFrame,
+    target_df: pd.DataFrame,
+    recent_windows: list[int] | None = None,
+) -> pd.DataFrame:
+    """Build target-row features with historical context but without using target outcomes."""
+    hist = historical_df.copy()
+    tgt = target_df.copy()
+
+    hist["_is_target"] = 0
+    tgt["_is_target"] = 1
+
+    # Ensure target rows do not update historical state.
+    if "p1_win" not in tgt.columns:
+        tgt["p1_win"] = pd.NA
+    tgt["p1_win"] = pd.NA
+
+    combo = pd.concat([hist, tgt], ignore_index=True, sort=False).sort_values("match_date").reset_index(drop=True)
+    combo_feat = add_prematch_features(combo, recent_windows=recent_windows)
+    return combo_feat[combo_feat["_is_target"] == 1].drop(columns=["_is_target"]).reset_index(drop=True)
+
+
 def get_feature_columns(df: pd.DataFrame, target_col: str = "p1_win") -> list[str]:
     excluded = {
         target_col,
@@ -96,5 +119,7 @@ def get_feature_columns(df: pd.DataFrame, target_col: str = "p1_win") -> list[st
         "surface",
         "round",
         "tour",
+        "set_scores",
+        "_is_target",
     }
     return [c for c in df.columns if c not in excluded and pd.api.types.is_numeric_dtype(df[c])]

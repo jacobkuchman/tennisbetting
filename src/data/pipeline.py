@@ -9,13 +9,17 @@ from src.features.build import add_prematch_features
 from src.features.elo import compute_elo_features
 
 
-def build_modeling_dataset(input_csv: str | Path, output_csv: str | Path) -> pd.DataFrame:
+def build_modeling_dataset(
+    input_csv: str | Path,
+    output_csv: str | Path,
+    recent_windows: list[int] | None = None,
+) -> pd.DataFrame:
     raw = load_csv(input_csv)
     normalized = normalize_match_data(raw)
     validate_time_order(normalized)
 
     with_elo = compute_elo_features(normalized)
-    with_features = add_prematch_features(with_elo)
+    with_features = add_prematch_features(with_elo, recent_windows=recent_windows)
 
     Path(output_csv).parent.mkdir(parents=True, exist_ok=True)
     with_features.to_csv(output_csv, index=False)
