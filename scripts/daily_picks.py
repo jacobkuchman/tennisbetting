@@ -21,8 +21,15 @@ from src.utils.config import load_config
 def main(config_path: str = "config/example_config.yaml"):
     cfg = load_config(config_path)
 
-    hist = pd.read_csv(cfg["paths"]["historical_matches"], parse_dates=["match_date"])
-    upcoming = pd.read_csv(cfg["paths"]["upcoming_matches"], parse_dates=["match_date"])
+    if cfg.get("data_source", "real") == "real":
+        hist_path = cfg["real_data"]["output_historical_merged_csv"]
+        upcoming_path = cfg["real_data"]["output_upcoming_merged_csv"]
+    else:
+        hist_path = cfg["paths"]["historical_matches"]
+        upcoming_path = cfg["paths"]["upcoming_matches"]
+
+    hist = pd.read_csv(hist_path, parse_dates=["match_date"])
+    upcoming = pd.read_csv(upcoming_path, parse_dates=["match_date"])
     hist = normalize_match_data(hist)
     upcoming = normalize_match_data(upcoming)
 
@@ -37,6 +44,10 @@ def main(config_path: str = "config/example_config.yaml"):
     if not model_path.exists():
         raise FileNotFoundError("Model missing. Run: python scripts/train_match_winner.py")
     artifacts = joblib.load(model_path)
+
+    for c in artifacts.feature_columns:
+        if c in upcoming_feat.columns:
+            upcoming_feat[c] = pd.to_numeric(upcoming_feat[c], errors="coerce")
 
     probs = artifacts.pipeline.predict_proba(upcoming_feat[artifacts.feature_columns])[:, 1]
     upcoming_feat["model_prob_p1"] = probs

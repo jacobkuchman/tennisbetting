@@ -1,9 +1,49 @@
 seed: 42
+
+# real (default) or sample
+data_source: real
+
 paths:
   historical_matches: data/raw/historical_matches.csv
   upcoming_matches: data/raw/upcoming_matches.csv
   model_output: outputs/models
   picks_output: outputs/picks
+
+real_data:
+  historical_results_path: data/raw/real/historical_results.csv
+  historical_odds_path: data/raw/real/historical_moneyline_odds.csv
+  upcoming_matches_path: data/raw/real/upcoming_matches.csv
+  upcoming_odds_path: data/raw/real/upcoming_moneyline_odds.csv
+
+  output_historical_merged_csv: data/processed/historical_merged.csv
+  output_upcoming_merged_csv: data/processed/upcoming_merged.csv
+
+  historical_results_schema:
+    match_date: match_date
+    tour: tour
+    tournament: tournament
+    surface: surface
+    round: round
+    winner_name: winner_name
+    loser_name: loser_name
+
+  odds_schema:
+    odds_date: match_date
+    tour: tour
+    tournament: tournament
+    player_1: player_1
+    player_2: player_2
+    odds_p1: odds_p1
+    odds_p2: odds_p2
+
+  upcoming_matches_schema:
+    match_date: match_date
+    tour: tour
+    tournament: tournament
+    surface: surface
+    round: round
+    player_1: player_1
+    player_2: player_2
 
 features:
   recent_windows: [5, 10]
@@ -22,7 +62,7 @@ pricing:
 
 bankroll:
   starting_bankroll: 10000
-  staking_mode: half_kelly  # options: flat, half_kelly
+  staking_mode: half_kelly
   flat_stake: 50
   max_stake_pct: 0.02
 

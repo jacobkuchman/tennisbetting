@@ -1,31 +1,32 @@
 # Tennis Betting Model - Phase 1 (Moneyline Only)
 
-This repository currently supports **Phase 1 only**: pre-match tennis **moneyline** modeling and +EV detection.
+This project is focused on **Phase 1 only**: pre-match tennis **moneyline** modeling, pricing, and +EV selection.
 
-It does **not** yet include production side-market pricing (spreads/totals/first-set/correct-score).
+## Primary workflow (real data first)
 
----
-
-## What Phase 1 does end-to-end
-
-1. Load and normalize historical match + odds data
-2. Build leak-safe pre-match features (including Elo)
-3. Train calibrated logistic regression for match winner probability
-4. Remove vig from two-way moneyline odds
-5. Convert probabilities to fair odds and compute EV/edge
-6. Run walk-forward backtest (past-only training)
-7. Generate daily picks for upcoming matches
+1. Ingest real historical match results
+2. Ingest real historical pre-match moneyline odds
+3. Normalize players/tournaments/surfaces/dates
+4. Match odds to results (robust join with normalized keys + fallback)
+5. Validate duplicates/missing odds/impossible dates
+6. Export cleaned merged datasets
+7. Build leak-safe model dataset and run train/backtest/picks scripts
 
 ---
 
-## Clean local setup (exact commands)
-
-Run from repo root:
+## Setup
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+---
+
+## Run commands (Phase 1)
+
+```bash
 python scripts/prepare_data.py
 python scripts/train_match_winner.py
 python scripts/run_backtest.py
@@ -34,137 +35,153 @@ python scripts/daily_picks.py
 
 ---
 
-## Expected outputs by command
+## Real-data file formats supported
 
-### `python scripts/prepare_data.py`
-Creates:
+All files are CSV.
+
+### 1) Historical match results (`real_data.historical_results_path`)
+Required logical fields:
+- match date
+- tour (ATP/WTA)
+- tournament
+- surface
+- round
+- winner name
+- loser name
+
+Mapped via config:
+`real_data.historical_results_schema`
+
+### 2) Historical moneyline odds (`real_data.historical_odds_path`)
+Required logical fields:
+- odds date (match date)
+- tour
+- tournament
+- player 1
+- player 2
+- decimal odds for player 1
+- decimal odds for player 2
+
+Mapped via config:
+`real_data.odds_schema`
+
+### 3) Upcoming matches (`real_data.upcoming_matches_path`)
+Required logical fields:
+- match date
+- tour
+- tournament
+- surface
+- round
+- player 1
+- player 2
+
+Mapped via config:
+`real_data.upcoming_matches_schema`
+
+### 4) Upcoming moneyline odds (`real_data.upcoming_odds_path`)
+Same logical fields as historical odds (date/tour/tournament/players/odds).
+
+---
+
+## Exact required columns (logical)
+
+### Historical results required
+- `match_date`
+- `tour`
+- `tournament`
+- `surface`
+- `round`
+- `winner_name`
+- `loser_name`
+
+### Historical odds required
+- `odds_date`
+- `tour`
+- `tournament`
+- `player_1`
+- `player_2`
+- `odds_p1` (decimal)
+- `odds_p2` (decimal)
+
+### Upcoming matches required
+- `match_date`
+- `tour`
+- `tournament`
+- `surface`
+- `round`
+- `player_1`
+- `player_2`
+
+### Upcoming odds required
+- `odds_date`
+- `tour`
+- `tournament`
+- `player_1`
+- `player_2`
+- `odds_p1` (decimal)
+- `odds_p2` (decimal)
+
+---
+
+## Matching logic between odds and results
+
+1. Normalize fields:
+   - player names: lowercase, accent/punctuation stripped
+   - tournament names: alias normalization (e.g., masters naming)
+   - surface standardization (Hard/Clay/Grass/Carpet)
+   - parsed datetimes
+2. Canonical player pairing:
+   - player pairs are sorted alphabetically to reduce orientation mismatch
+   - odds are swapped when needed to keep `odds_p1/odds_p2` aligned to canonical pairing
+3. Primary join key:
+   - `match_date + tour + tournament_norm + player_1_norm + player_2_norm`
+4. Fallback join key (if primary fails):
+   - `match_date + tour + player_1_norm + player_2_norm`
+5. Validation:
+   - reject duplicate normalized matches
+   - reject missing odds after matching
+   - reject impossible dates (pre-1960 or far-future)
+
+---
+
+## Output files produced by `prepare_data.py`
+
+When `data_source: real`:
+- `data/processed/historical_merged.csv` (cleaned results+odds)
+- `data/processed/upcoming_merged.csv` (cleaned upcoming+odds)
+- `data/processed/model_dataset.csv` (feature-engineered historical dataset for modeling)
+
+When `data_source: sample`:
 - `data/processed/model_dataset.csv`
 
-### `python scripts/train_match_winner.py`
-Creates:
-- `outputs/models/match_winner_logreg.joblib`
-- `outputs/models/match_winner_eval_predictions.csv`
-
-Prints:
-- baseline test metrics (`log_loss`, `brier`, and `auc` when available)
-
-### `python scripts/run_backtest.py`
-Creates (per configured edge threshold):
-- `outputs/backtest_bets_edge_2.csv`
-- `outputs/backtest_bets_edge_3.csv`
-- `outputs/backtest_bets_edge_4.csv`
-
-Prints:
-- bets, hit rate, average edge, stake totals, pnl, roi, max drawdown
-
-### `python scripts/daily_picks.py`
-Creates:
-- `outputs/picks/daily_picks.csv`
-
-Prints:
-- readable picks table sorted by edge
-
 ---
 
-## Real-data schema (required columns)
+## Config example (`config/example_config.yaml`)
 
-You can plug in any source as long as you provide the columns below.
-
-### Required for `data/raw/historical_matches.csv`
-
-| Column | Type | Required | Notes |
-|---|---|---:|---|
-| `match_date` | date/datetime | ✅ | parseable by pandas |
-| `player_1` | string | ✅ | model is framed as P1 vs P2 |
-| `player_2` | string | ✅ | |
-| `tournament` | string | ✅ | |
-| `tour` | string | ✅ | e.g. ATP, WTA |
-| `surface` | string | ✅ | Hard/Clay/Grass/etc |
-| `round` | string | ✅ | |
-| `odds_p1` | float | ✅ | decimal moneyline for P1 |
-| `odds_p2` | float | ✅ | decimal moneyline for P2 |
-| `p1_win` | 0/1 | ✅* | required unless `winner_name` exists |
-| `winner_name` | string | ✅* | optional if `p1_win` provided |
-
-`*` At least one target source must exist: either `p1_win`, or `winner_name` from which `p1_win` can be derived.
-
-### Required for `data/raw/upcoming_matches.csv`
-
-| Column | Type | Required | Notes |
-|---|---|---:|---|
-| `match_date` | date/datetime | ✅ | upcoming/premarket date |
-| `player_1` | string | ✅ | |
-| `player_2` | string | ✅ | |
-| `tournament` | string | ✅ | |
-| `tour` | string | ✅ | ATP/WTA recommended |
-| `surface` | string | ✅ | |
-| `round` | string | ✅ | |
-| `odds_p1` | float | ✅ | decimal moneyline |
-| `odds_p2` | float | ✅ | decimal moneyline |
-
-### Optional feature columns (used when present)
-
-- `rank_p1`, `rank_p2`
-- `tournament_tier`
-- `p1_serve_points_won_pct`, `p2_serve_points_won_pct`
-- `p1_return_points_won_pct`, `p2_return_points_won_pct`
-- `p1_hold_pct`, `p2_hold_pct`
-- `p1_break_pct`, `p2_break_pct`
-- `total_games`
-- `indoor`
-
----
-
-## Leakage controls in this implementation
-
-- Features are generated in chronological order.
-- Player histories update **after** each row’s features are built.
-- Upcoming rows are featurized with historical context while their outcomes are forced to null.
-- Walk-forward backtest retrains only on matches before each prediction date.
+- `data_source: real` is default.
+- `real_data.*_schema` maps your external column names to logical fields.
+- You can switch to `data_source: sample` for synthetic local dry-runs.
 
 ---
 
 ## Troubleshooting
 
-### `ModuleNotFoundError: pandas` / `numpy` / `sklearn`
-Install dependencies inside an active virtual environment:
+### `pip install -r requirements.txt` fails in restricted network
+Set pip index/proxy explicitly, then retry.
 
-```bash
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+### `Missing odds for X ... after matching`
+Your player/tournament names likely need better normalization or source-specific aliases.
 
-### `pip install -r requirements.txt` fails behind proxy / restricted network
-Set your pip index/proxy explicitly (example):
+### `Duplicate historical matches found after normalization`
+Your results source has duplicate rows after canonicalization; dedupe upstream or add source-specific keys.
 
-```bash
-python -m pip config set global.index-url https://pypi.org/simple
-# or export HTTPS_PROXY / HTTP_PROXY if your environment requires it
-```
-
-### `Missing data/processed/model_dataset.csv`
-Run:
-
-```bash
-python scripts/prepare_data.py
-```
-
-### `Model missing. Run: python scripts/train_match_winner.py`
-Run:
-
-```bash
-python scripts/train_match_winner.py
-```
-
-### Not enough rows for train/test split
-Adjust `model.test_start_date` in `config/example_config.yaml` or provide more historical rows.
-
-### Odds format errors
-Current pipeline expects **decimal odds** in `odds_p1` and `odds_p2`.
+### `Found impossible future date`
+Check timezone/date parsing and ensure historical files do not include upcoming events.
 
 ---
 
-## Placeholder data warning
+## Sample data support
 
-`data/raw/historical_matches.csv` and `data/raw/upcoming_matches.csv` are synthetic examples for dry-run structure checks only. Replace them with real ATP/WTA and sportsbook data before production use.
+Sample files are still included under `data/raw/`.
+However, real-data ingestion is now the primary documented path.
 

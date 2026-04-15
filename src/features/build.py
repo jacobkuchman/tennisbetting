@@ -32,9 +32,6 @@ def add_prematch_features(df: pd.DataFrame, recent_windows: list[int] | None = N
 
         feat: dict = {}
         feat["ranking_gap"] = _safe_get(row, "rank_p2") - _safe_get(row, "rank_p1")
-        feat["elo_diff"] = _safe_get(row, "elo_diff", 0.0)
-        feat["surface_elo_diff"] = _safe_get(row, "surface_elo_diff", 0.0)
-
         for w in recent_windows:
             p1_recent = win_hist[p1][-w:]
             p2_recent = win_hist[p2][-w:]
@@ -122,4 +119,5 @@ def get_feature_columns(df: pd.DataFrame, target_col: str = "p1_win") -> list[st
         "set_scores",
         "_is_target",
     }
-    return [c for c in df.columns if c not in excluded and pd.api.types.is_numeric_dtype(df[c])]
+    cols = [c for c in df.columns if c not in excluded and pd.api.types.is_numeric_dtype(df[c])]
+    return [c for c in cols if df[c].notna().any()]

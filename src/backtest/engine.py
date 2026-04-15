@@ -5,7 +5,7 @@ import pandas as pd
 
 from src.models.match_winner import evaluate_binary_predictions, predict_proba, train_match_winner_model
 from src.pricing.bankroll import recommend_stake
-from src.pricing.odds import edge_vs_market, expected_value, implied_prob_to_decimal, remove_vig_two_way
+from src.pricing.odds import edge_vs_market, expected_value, remove_vig_two_way, safe_implied_prob_to_decimal
 
 
 def _compute_drawdown(equity_curve: pd.Series) -> float:
@@ -63,7 +63,7 @@ def walk_forward_backtest(
     )
     data["edge"] = data.apply(lambda r: edge_vs_market(r["model_prob_p1"], r["no_vig_prob_p1"]), axis=1)
     data["ev"] = data.apply(lambda r: expected_value(r["model_prob_p1"], r["odds_p1"]), axis=1)
-    data["fair_odds_decimal_p1"] = data["model_prob_p1"].apply(implied_prob_to_decimal)
+    data["fair_odds_decimal_p1"] = data["model_prob_p1"].apply(safe_implied_prob_to_decimal)
 
     bets = data.loc[data["edge"] >= min_edge].copy()
     bankroll = bankroll_start

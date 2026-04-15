@@ -54,3 +54,8 @@ def normalize_probs(probs: np.ndarray) -> np.ndarray:
     if total <= 0:
         raise ValueError("Probability array sum must be > 0")
     return probs / total
+
+
+def safe_implied_prob_to_decimal(prob: float, eps: float = 1e-6) -> float:
+    p = min(max(float(prob), eps), 1 - eps)
+    return 1.0 / p
