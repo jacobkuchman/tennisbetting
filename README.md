@@ -2,6 +2,22 @@
 
 This project is focused on **Phase 1 only**: pre-match tennis **moneyline** modeling, pricing, and +EV selection.
 
+## Where to get data
+
+For quickest start without your own private feeds:
+
+1. **Tennis Abstract**
+   - Use it for historical ATP/WTA match results (and optional stats enrichment).
+   - Transform those downloads into `historical_results.csv` format.
+
+2. **The Odds API**
+   - Use it for upcoming and historical pre-match moneyline odds.
+   - Transform exports into `historical_moneyline_odds.csv` and `upcoming_moneyline_odds.csv`.
+
+> Side markets (spread/totals/first-set/correct score) are **not required yet**. Keep scope to moneyline only.
+
+---
+
 ## Primary workflow (real data first)
 
 1. Ingest real historical match results
@@ -24,14 +40,46 @@ pip install -r requirements.txt
 
 ---
 
+## Required input files and placement
+
+Place your CSV files in `data/raw/real/` with these exact filenames:
+
+- `historical_results.csv`
+- `historical_moneyline_odds.csv`
+- `upcoming_matches.csv`
+- `upcoming_moneyline_odds.csv`
+
+If you need starter headers, copy templates from `data/templates/`:
+
+- `data/templates/historical_match_results.csv`
+- `data/templates/historical_moneyline_odds.csv`
+- `data/templates/upcoming_matches.csv`
+- `data/templates/upcoming_moneyline_odds.csv`
+
+---
+
 ## Run commands (Phase 1)
 
 ```bash
+python scripts/validate_schema.py
 python scripts/prepare_data.py
 python scripts/train_match_winner.py
 python scripts/run_backtest.py
 python scripts/daily_picks.py
 ```
+
+---
+
+## Transform helper for raw downloads
+
+Use `scripts/transform_raw_to_schema.py` as a starter mapping script.
+
+It includes example functions for:
+- Tennis Abstract historical results
+- The Odds API moneyline odds
+- upcoming matches formatting
+
+You will likely need to edit column mappings to match your exact export format.
 
 ---
 
@@ -168,6 +216,9 @@ When `data_source: sample`:
 
 ### `pip install -r requirements.txt` fails in restricted network
 Set pip index/proxy explicitly, then retry.
+
+### `Schema validation FAILED`
+Run `python scripts/validate_schema.py` and add any missing columns/files listed.
 
 ### `Missing odds for X ... after matching`
 Your player/tournament names likely need better normalization or source-specific aliases.
