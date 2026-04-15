@@ -134,6 +134,14 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### `pip install -r requirements.txt` fails behind proxy / restricted network
+Set your pip index/proxy explicitly (example):
+
+```bash
+python -m pip config set global.index-url https://pypi.org/simple
+# or export HTTPS_PROXY / HTTP_PROXY if your environment requires it
+```
+
 ### `Missing data/processed/model_dataset.csv`
 Run:
 

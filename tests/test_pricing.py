@@ -2,6 +2,7 @@ from src.pricing.bankroll import kelly_fraction, recommend_stake
 from src.pricing.odds import (
     american_to_decimal,
     decimal_to_american,
+    decimal_to_implied_prob,
     expected_value,
     implied_prob_to_decimal,
     remove_vig_two_way,
@@ -14,15 +15,20 @@ def test_odds_roundtrip():
     assert abs(american_to_decimal(am) - dec) < 0.05
 
 
-def test_remove_vig_two_way_sums_to_one_and_preserves_order():
-    p1, p2 = remove_vig_two_way(1.80, 2.10)
-    assert round(p1 + p2, 8) == 1.0
-    assert p1 > p2
+def test_implied_probability_conversion():
+    assert abs(decimal_to_implied_prob(2.0) - 0.5) < 1e-9
+    assert abs(decimal_to_implied_prob(4.0) - 0.25) < 1e-9
 
 
 def test_fair_odds_conversion_exact_cases():
     assert round(implied_prob_to_decimal(0.5), 2) == 2.00
     assert round(implied_prob_to_decimal(0.4), 2) == 2.50
+
+
+def test_remove_vig_two_way_sums_to_one_and_preserves_order():
+    p1, p2 = remove_vig_two_way(1.80, 2.10)
+    assert round(p1 + p2, 8) == 1.0
+    assert p1 > p2
 
 
 def test_ev_is_zero_at_fair_price():
