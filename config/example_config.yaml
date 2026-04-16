@@ -10,7 +10,7 @@ paths:
   picks_output: outputs/picks
 
 real_data:
-  historical_results_path: data/raw/real/historical_results.csv
+  historical_results_path: data/raw/real/historical_match_results.csv
   historical_odds_path: data/raw/real/historical_moneyline_odds.csv
   upcoming_matches_path: data/raw/real/upcoming_matches.csv
   upcoming_odds_path: data/raw/real/upcoming_moneyline_odds.csv

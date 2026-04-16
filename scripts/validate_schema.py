@@ -66,7 +66,7 @@ def validate_file(path: Path, required_cols: list[str]) -> list[str]:
 def main(base_dir: str = "data/raw/real"):
     base = Path(base_dir)
     mapping = {
-        "historical_match_results.csv": base / "historical_results.csv",
+        "historical_match_results.csv": base / "historical_match_results.csv",
         "historical_moneyline_odds.csv": base / "historical_moneyline_odds.csv",
         "upcoming_matches.csv": base / "upcoming_matches.csv",
         "upcoming_moneyline_odds.csv": base / "upcoming_moneyline_odds.csv",

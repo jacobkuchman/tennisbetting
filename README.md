@@ -8,7 +8,7 @@ For quickest start without your own private feeds:
 
 1. **Tennis Abstract**
    - Use it for historical ATP/WTA match results (and optional stats enrichment).
-   - Transform those downloads into `historical_results.csv` format.
+   - Transform those downloads into `historical_match_results.csv` format.
 
 2. **The Odds API**
    - Use it for upcoming and historical pre-match moneyline odds.
@@ -40,11 +40,42 @@ pip install -r requirements.txt
 
 ---
 
+## Season-file transformer for your source
+
+If you have season files like:
+- `2024-atp-season.csv`
+- `2025-atp-season.csv`
+- `2026-atp-season.csv`
+- `2024-wta-season.csv`
+- `2025-wta-season.csv`
+- `2026-wta-season.csv`
+
+Place them in `data/raw/source_seasons/` and run:
+
+```bash
+python scripts/transform_season_source_to_phase1.py --input-dir data/raw/source_seasons --output-dir data/raw/real
+```
+
+This generates:
+- `data/raw/real/historical_match_results.csv`
+- `data/raw/real/historical_moneyline_odds.csv`
+- `data/raw/real/upcoming_matches.csv`
+- `data/raw/real/upcoming_moneyline_odds.csv`
+
+The script prints a summary:
+- total rows
+- completed matches used
+- upcoming matches used
+- rows dropped
+- rows missing odds
+
+---
+
 ## Required input files and placement
 
 Place your CSV files in `data/raw/real/` with these exact filenames:
 
-- `historical_results.csv`
+- `historical_match_results.csv`
 - `historical_moneyline_odds.csv`
 - `upcoming_matches.csv`
 - `upcoming_moneyline_odds.csv`
@@ -72,7 +103,7 @@ python scripts/daily_picks.py
 
 ## Transform helper for raw downloads
 
-Use `scripts/transform_raw_to_schema.py` as a starter mapping script.
+Use `scripts/transform_season_source_to_phase1.py` for your season source, or `scripts/transform_raw_to_schema.py` as a generic starter mapping script.
 
 It includes example functions for:
 - Tennis Abstract historical results
