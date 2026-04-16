@@ -1,0 +1,26 @@
+match_date,tour,tournament,surface,round,player_1,player_2,odds_p1,odds_p2
+2026-04-14,ATP,Tourney_8,Grass,SF,atp player 20,atp player 6,1.453,3.97
+2026-04-15,ATP,Tourney_3,Grass,F,atp player 12,atp player 13,2.835,1.703
+2026-04-16,ATP,Tourney_8,Grass,R16,atp player 2,atp player 3,1.864,2.478
+2026-04-17,ATP,Tourney_3,Grass,SF,atp player 19,atp player 4,2.319,1.966
+2026-04-18,ATP,Tourney_6,Hard,R16,atp player 11,atp player 3,2.478,1.864
+2026-04-19,WTA,Tourney_4,Hard,R32,wta player 12,wta player 4,1.84,2.522
+2026-04-20,ATP,Tourney_1,Hard,SF,atp player 12,atp player 4,1.732,2.757
+2026-04-21,WTA,Tourney_4,Clay,F,wta player 10,wta player 6,1.817,2.566
+2026-04-22,WTA,Tourney_8,Hard,QF,wta player 1,wta player 14,1.829,2.544
+2026-04-23,WTA,Tourney_6,Hard,F,wta player 5,wta player 7,2.051,2.211
+2026-04-24,WTA,Tourney_2,Clay,F,wta player 1,wta player 11,3.491,1.53
+2026-04-25,ATP,Tourney_1,Grass,QF,atp player 17,atp player 19,2.319,1.966
+2026-04-26,WTA,Tourney_6,Clay,F,wta player 6,wta player 8,2.478,1.864
+2026-04-27,ATP,Tourney_2,Hard,R16,atp player 19,atp player 3,1.278,6.359
+2026-04-28,WTA,Tourney_4,Grass,QF,wta player 19,wta player 7,1.852,2.5
+2026-04-29,WTA,Tourney_3,Hard,R16,wta player 10,wta player 5,3.528,1.523
+2026-04-30,ATP,Tourney_8,Clay,F,atp player 11,atp player 17,1.436,4.104
+2026-05-01,ATP,Tourney_4,Grass,R16,atp player 18,atp player 8,1.431,4.15
+2026-05-02,WTA,Tourney_1,Hard,F,wta player 4,wta player 6,2.357,1.939
+2026-05-03,WTA,Tourney_7,Hard,R16,wta player 2,wta player 7,4.649,1.379
+2026-05-04,WTA,Tourney_1,Clay,SF,wta player 20,wta player 8,4.703,1.375
+2026-05-05,WTA,Tourney_4,Grass,R16,wta player 19,wta player 2,1.436,4.104
+2026-05-06,WTA,Tourney_7,Hard,F,wta player 10,wta player 9,2.396,1.913
+2026-05-07,ATP,Tourney_5,Grass,QF,atp player 12,atp player 2,2.128,2.128
+2026-05-08,ATP,Tourney_8,Grass,QF,atp player 11,atp player 14,2.5,1.852
