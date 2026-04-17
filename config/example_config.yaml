@@ -70,3 +70,9 @@ backtest:
   retrain_frequency_days: 30
   min_edge_thresholds: [0.02, 0.03, 0.04]
   start_date: 2024-01-01
+
+daily_picks:
+  include_atp: true
+  include_wta: true
+  include_challenger: false
+  minimum_edge: 0.03
