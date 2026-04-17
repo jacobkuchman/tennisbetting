@@ -87,50 +87,87 @@ def main(config_path: str = "config/example_config.yaml"):
 
     priced["odds_american"] = priced["odds_p1"].apply(decimal_to_american)
     priced["fair_odds_american"] = priced["fair_odds_decimal_p1"].apply(decimal_to_american)
+    priced["player_1_name"] = priced["player_1"].astype(str)
+    priced["player_2_name"] = priced["player_2"].astype(str)
+    priced["selection_name"] = priced["player_1_name"]
+    priced["match_name"] = priced["player_1_name"] + " vs " + priced["player_2_name"]
+    priced["model_probability"] = priced["model_prob_p1"]
 
-    bankroll = cfg["bankroll"]["starting_bankroll"]
+    picks_cfg = cfg.get("daily_picks", {})
+    bankroll_cfg = cfg.get("bankroll", {})
+    current_bankroll = float(picks_cfg.get("current_bankroll", bankroll_cfg.get("starting_bankroll", 0)))
+    staking_style = str(picks_cfg.get("staking_style", bankroll_cfg.get("staking_mode", "half_kelly"))).strip().lower()
+    flat_bet_size = float(picks_cfg.get("flat_bet_size", bankroll_cfg.get("flat_stake", 0)))
+    max_bet_pct = float(picks_cfg.get("max_bet_pct", bankroll_cfg.get("max_stake_pct", 0.02)))
+    min_bet_amount = float(picks_cfg.get("min_bet_amount", 0.0))
+
     priced["recommended_stake"] = priced.apply(
         lambda r: recommend_stake(
-            bankroll=bankroll,
-            prob=r["model_prob_p1"],
+            bankroll=current_bankroll,
+            prob=r["model_probability"],
             decimal_odds=r["odds_p1"],
-            mode=cfg["bankroll"]["staking_mode"],
-            flat_stake=cfg["bankroll"]["flat_stake"],
-            max_stake_pct=cfg["bankroll"]["max_stake_pct"],
+            mode=staking_style,
+            flat_stake=flat_bet_size,
+            max_stake_pct=max_bet_pct,
+            min_bet_amount=min_bet_amount,
         ),
         axis=1,
     )
+    priced["staking_style"] = staking_style
+    priced["current_bankroll"] = current_bankroll
 
-    picks_cfg = cfg.get("daily_picks", {})
     min_edge = float(picks_cfg.get("minimum_edge", cfg["pricing"]["default_min_edge"]))
     picks = priced[priced["edge"] >= min_edge].sort_values("edge", ascending=False).reset_index(drop=True)
+
+    output_cols = [
+        "match_date",
+        "tour",
+        "tournament",
+        "player_1_name",
+        "player_2_name",
+        "match_name",
+        "selection_name",
+        "odds_american",
+        "fair_odds_american",
+        "edge",
+        "model_probability",
+        "recommended_stake",
+        "staking_style",
+        "current_bankroll",
+    ]
+    picks_out = picks[output_cols].copy()
 
     out_dir = Path(cfg["paths"]["picks_output"])
     out_dir.mkdir(parents=True, exist_ok=True)
     out_csv = out_dir / "daily_picks.csv"
-    picks.to_csv(out_csv, index=False)
+    picks_out.to_csv(out_csv, index=False)
 
     show_cols = [
         "match_date",
         "tour",
         "tournament",
-        "player_1",
-        "player_2",
+        "match_name",
+        "selection_name",
         "odds_american",
-        "no_vig_prob_p1",
-        "model_prob_p1",
         "fair_odds_american",
-        "ev",
         "edge",
+        "model_probability",
         "recommended_stake",
+        "staking_style",
+        "current_bankroll",
     ]
 
     print("\n=== DAILY PICKS (PHASE 1 MONEYLINE) ===")
     print(f"Filters => ATP: {picks_cfg.get('include_atp', True)}, WTA: {picks_cfg.get('include_wta', True)}, Challenger: {picks_cfg.get('include_challenger', False)}")
     print(f"Minimum edge => {min_edge:.2%}")
+    print(
+        "Staking => "
+        f"style: {staking_style}, bankroll: {current_bankroll:.2f}, flat_bet_size: {flat_bet_size:.2f}, "
+        f"max_bet_pct: {max_bet_pct:.2%}, min_bet_amount: {min_bet_amount:.2f}"
+    )
     print(f"Matches after filters => {len(picks)}\n")
-    if len(picks):
-        print(picks[show_cols].to_string(index=False))
+    if len(picks_out):
+        print(picks_out[show_cols].to_string(index=False))
     else:
         print("No picks found for the configured filters/threshold.")
     print(f"\nSaved picks to {out_csv}")

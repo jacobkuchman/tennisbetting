@@ -47,3 +47,18 @@ def test_staking_caps():
     stake = recommend_stake(1000, 0.65, 2.2, mode="half_kelly", max_stake_pct=0.02)
     assert stake <= 20
     assert kelly_fraction(0.4, 1.8) >= 0
+
+
+def test_supported_staking_styles():
+    stake_kelly = recommend_stake(1000, 0.6, 2.1, mode="kelly", max_stake_pct=0.05)
+    stake_half = recommend_stake(1000, 0.6, 2.1, mode="half_kelly", max_stake_pct=0.05)
+    stake_quarter = recommend_stake(1000, 0.6, 2.1, mode="quarter_kelly", max_stake_pct=0.05)
+    stake_flat = recommend_stake(1000, 0.6, 2.1, mode="flat", flat_stake=25, max_stake_pct=0.05)
+
+    assert stake_kelly >= stake_half >= stake_quarter >= 0
+    assert stake_flat == 25
+
+
+def test_min_bet_amount_sets_small_stakes_to_zero():
+    stake = recommend_stake(1000, 0.51, 2.0, mode="quarter_kelly", max_stake_pct=0.05, min_bet_amount=10)
+    assert stake == 0.0

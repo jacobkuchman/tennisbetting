@@ -106,12 +106,38 @@ This will:
 - print a clean terminal summary table
 - save to `outputs/picks/daily_picks.csv`
 - show sportsbook and fair odds in **American odds** format (`odds_american`, `fair_odds_american`)
+- use readable player names in output columns (`player_1_name`, `player_2_name`, `selection_name`, `match_name`)
 
 Config options (in `config/example_config.yaml`):
 - `daily_picks.include_atp`
 - `daily_picks.include_wta`
 - `daily_picks.include_challenger`
 - `daily_picks.minimum_edge`
+- `daily_picks.current_bankroll`
+- `daily_picks.staking_style` (`flat`, `kelly`, `half_kelly`, `quarter_kelly`)
+- `daily_picks.flat_bet_size`
+- `daily_picks.max_bet_pct`
+- `daily_picks.min_bet_amount`
+
+### Bankroll + staking style (daily picks)
+
+Set these in one place under `daily_picks` in `config/example_config.yaml`:
+
+- `current_bankroll`: bankroll used for stake sizing
+- `staking_style`:
+  - `flat`: fixed stake (`flat_bet_size`) with max-bet cap
+  - `kelly`: full Kelly fraction
+  - `half_kelly`: 50% Kelly
+  - `quarter_kelly`: 25% Kelly
+- `flat_bet_size`: used when staking style is `flat`
+- `max_bet_pct`: caps any stake to this percentage of bankroll
+- `min_bet_amount`: if suggested stake is below this, stake is set to 0
+
+After changing bankroll/staking settings, rerun:
+
+```bash
+python scripts/daily_picks.py
+```
 
 ---
 
@@ -292,4 +318,3 @@ Check timezone/date parsing and ensure historical files do not include upcoming 
 
 Sample files are still included under `data/raw/`.
 However, real-data ingestion is now the primary documented path.
-

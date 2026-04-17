@@ -77,3 +77,8 @@ daily_picks:
   include_wta: true
   include_challenger: false
   minimum_edge: 0.03
+  current_bankroll: 10000
+  staking_style: half_kelly   # one of: flat, kelly, half_kelly, quarter_kelly
+  flat_bet_size: 50
+  max_bet_pct: 0.02
+  min_bet_amount: 5
