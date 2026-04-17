@@ -12,6 +12,7 @@ Expected input columns include:
 - surface
 - home_name
 - away_name
+- status
 - winner_code
 - home_odds_match_winner
 - away_odds_match_winner
@@ -31,6 +32,9 @@ from src.data.real_ingestion import normalize_player_name, normalize_surface, no
 
 
 CRITICAL_FIELDS = ["match_date", "tour", "tournament", "round", "surface", "home_name", "away_name"]
+RESULTS_COLUMNS = ["match_date", "tour", "tournament", "surface", "round", "winner_name", "loser_name"]
+ODDS_COLUMNS = ["match_date", "tour", "tournament", "player_1", "player_2", "odds_p1", "odds_p2"]
+UPCOMING_COLUMNS = ["match_date", "tour", "tournament", "surface", "round", "player_1", "player_2"]
 
 
 def _norm_display_name(name: str) -> str:
@@ -84,17 +88,40 @@ def _parse_date(df: pd.DataFrame) -> pd.Series:
     return out.dt.strftime("%Y-%m-%d")
 
 
+def _is_status_completed(status: object) -> bool:
+    s = str(status).strip().lower()
+    completed = {
+        "finished",
+        "completed",
+        "complete",
+        "final",
+        "ended",
+        "done",
+        "ft",
+        "fulltime",
+    }
+    return s in completed
+
+
 def _winner_from_code(row: pd.Series) -> tuple[str | None, str | None, bool]:
-    code = str(row.get("winner_code", "")).strip().lower()
+    code_raw = row.get("winner_code", "")
+    code = str(code_raw).strip().lower()
     home = row.get("home_name")
     away = row.get("away_name")
 
-    home_codes = {"h", "home", "1", "p1", "player1"}
-    away_codes = {"a", "away", "2", "p2", "player2"}
+    # handle numeric winner codes that often appear as 1,2 or 1.0,2.0
+    numeric_code = None
+    try:
+        numeric_code = int(float(code))
+    except Exception:
+        pass
 
-    if code in home_codes:
+    home_codes = {"h", "home", "1", "1.0", "p1", "player1"}
+    away_codes = {"a", "away", "2", "2.0", "p2", "player2"}
+
+    if numeric_code == 1 or code in home_codes:
         return home, away, True
-    if code in away_codes:
+    if numeric_code == 2 or code in away_codes:
         return away, home, True
     return None, None, False
 
@@ -125,7 +152,9 @@ def transform_dataframe(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, p
             dropped_rows += 1
             continue
 
-        winner_name, loser_name, is_completed = _winner_from_code(row)
+        winner_name, loser_name, winner_code_completed = _winner_from_code(row)
+        status_completed = _is_status_completed(row.get("status", ""))
+        is_completed = status_completed and winner_code_completed
 
         home_odds = pd.to_numeric(row.get("home_odds_match_winner"), errors="coerce")
         away_odds = pd.to_numeric(row.get("away_odds_match_winner"), errors="coerce")
@@ -168,6 +197,7 @@ def transform_dataframe(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, p
             else:
                 missing_odds_rows += 1
         else:
+            # not completed yet -> upcoming
             upcoming_matches_records.append(base_match)
             if has_odds:
                 upcoming_odds_records.append(
@@ -184,17 +214,17 @@ def transform_dataframe(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, p
             else:
                 missing_odds_rows += 1
 
-    historical_results = pd.DataFrame(completed_records)
-    historical_odds = pd.DataFrame(historical_odds_records)
-    upcoming_matches = pd.DataFrame(upcoming_matches_records)
-    upcoming_odds = pd.DataFrame(upcoming_odds_records)
+    historical_results = pd.DataFrame(completed_records, columns=RESULTS_COLUMNS)
+    historical_odds = pd.DataFrame(historical_odds_records, columns=ODDS_COLUMNS)
+    upcoming_matches = pd.DataFrame(upcoming_matches_records, columns=UPCOMING_COLUMNS)
+    upcoming_odds = pd.DataFrame(upcoming_odds_records, columns=ODDS_COLUMNS)
 
     summary = {
         "total_rows": total_rows,
         "completed_matches_used": len(historical_results),
         "upcoming_matches_used": len(upcoming_matches),
-        "rows_dropped": dropped_rows,
         "rows_missing_odds": missing_odds_rows,
+        "rows_dropped": dropped_rows,
     }
     return historical_results, historical_odds, upcoming_matches, upcoming_odds, summary
 

@@ -18,6 +18,34 @@ from src.pricing.markets import price_match_winner_market
 from src.utils.config import load_config
 
 
+def filter_daily_universe(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+    picks_cfg = cfg.get("daily_picks", {})
+    include_atp = bool(picks_cfg.get("include_atp", True))
+    include_wta = bool(picks_cfg.get("include_wta", True))
+    include_challenger = bool(picks_cfg.get("include_challenger", False))
+
+    out = df.copy()
+    out["tour"] = out["tour"].astype(str).str.upper().str.strip()
+    out["tournament"] = out["tournament"].astype(str)
+
+    allowed_tours = set()
+    if include_atp:
+        allowed_tours.add("ATP")
+    if include_wta:
+        allowed_tours.add("WTA")
+
+    out = out[out["tour"].isin(allowed_tours)].copy()
+
+    if not include_challenger:
+        challenger_mask = (
+            out["tour"].str.contains("CHALLENGER", case=False, na=False)
+            | out["tournament"].str.contains("CHALLENGER", case=False, na=False)
+        )
+        out = out[~challenger_mask].copy()
+
+    return out
+
+
 def main(config_path: str = "config/example_config.yaml"):
     cfg = load_config(config_path)
 
@@ -32,6 +60,8 @@ def main(config_path: str = "config/example_config.yaml"):
     upcoming = pd.read_csv(upcoming_path, parse_dates=["match_date"])
     hist = normalize_match_data(hist)
     upcoming = normalize_match_data(upcoming)
+
+    upcoming = filter_daily_universe(upcoming, cfg)
 
     upcoming_elo = compute_elo_with_history(hist, upcoming)
     upcoming_feat = add_features_with_history(
@@ -67,7 +97,9 @@ def main(config_path: str = "config/example_config.yaml"):
         axis=1,
     )
 
-    picks = priced[priced["edge"] >= cfg["pricing"]["default_min_edge"]].sort_values("edge", ascending=False)
+    picks_cfg = cfg.get("daily_picks", {})
+    min_edge = float(picks_cfg.get("minimum_edge", cfg["pricing"]["default_min_edge"]))
+    picks = priced[priced["edge"] >= min_edge].sort_values("edge", ascending=False).reset_index(drop=True)
 
     out_dir = Path(cfg["paths"]["picks_output"])
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -77,6 +109,7 @@ def main(config_path: str = "config/example_config.yaml"):
     show_cols = [
         "match_date",
         "tour",
+        "tournament",
         "player_1",
         "player_2",
         "odds_p1",
@@ -87,8 +120,16 @@ def main(config_path: str = "config/example_config.yaml"):
         "edge",
         "recommended_stake",
     ]
-    print(picks[show_cols].to_string(index=False))
-    print(f"Saved picks to {out_csv}")
+
+    print("\n=== DAILY PICKS (PHASE 1 MONEYLINE) ===")
+    print(f"Filters => ATP: {picks_cfg.get('include_atp', True)}, WTA: {picks_cfg.get('include_wta', True)}, Challenger: {picks_cfg.get('include_challenger', False)}")
+    print(f"Minimum edge => {min_edge:.2%}")
+    print(f"Matches after filters => {len(picks)}\n")
+    if len(picks):
+        print(picks[show_cols].to_string(index=False))
+    else:
+        print("No picks found for the configured filters/threshold.")
+    print(f"\nSaved picks to {out_csv}")
 
 
 if __name__ == "__main__":

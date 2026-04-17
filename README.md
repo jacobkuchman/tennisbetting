@@ -89,6 +89,30 @@ If you need starter headers, copy templates from `data/templates/`:
 
 ---
 
+## Daily picks only (terminal + CSV)
+
+If you only want the daily picks flow:
+
+```bash
+python scripts/daily_picks.py
+```
+
+This will:
+- filter to configured tours (ATP/WTA)
+- exclude Challenger matches by default
+- apply a configurable minimum edge threshold
+- sort picks highest edge to lowest edge
+- print a clean terminal summary table
+- save to `outputs/picks/daily_picks.csv`
+
+Config options (in `config/example_config.yaml`):
+- `daily_picks.include_atp`
+- `daily_picks.include_wta`
+- `daily_picks.include_challenger`
+- `daily_picks.minimum_edge`
+
+---
+
 ## Run commands (Phase 1)
 
 ```bash
