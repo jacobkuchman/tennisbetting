@@ -45,7 +45,8 @@ def build_real_moneyline_datasets(
     historical_schema: RealSchema | None = None,
     odds_schema: OddsSchema | None = None,
     upcoming_match_schema: dict[str, str] | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    unmatched_historical_debug_csv: str | Path = "outputs/debug/unmatched_historical_results.csv",
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]:
     historical_schema = historical_schema or RealSchema(
         match_date="match_date",
         tour="tour",
@@ -78,6 +79,14 @@ def build_real_moneyline_datasets(
     hist_odds = load_moneyline_odds(historical_odds_path, schema=odds_schema, is_upcoming=False)
     historical_merged = merge_results_with_odds(results, hist_odds)
 
+    matched_rows = int(historical_merged.get("odds_matched", pd.Series(dtype=bool)).sum())
+    unmatched_rows = int(len(historical_merged) - matched_rows)
+
+    unmatched = historical_merged[~historical_merged["odds_matched"]].copy() if "odds_matched" in historical_merged.columns else pd.DataFrame()
+    debug_path = Path(unmatched_historical_debug_csv)
+    debug_path.parent.mkdir(parents=True, exist_ok=True)
+    unmatched.to_csv(debug_path, index=False)
+
     upcoming_raw = load_csv(upcoming_matches_path).rename(columns=upcoming_match_schema)
     required_upcoming_cols = ["match_date", "tour", "tournament", "surface", "round", "player_1", "player_2"]
     miss = [c for c in required_upcoming_cols if c not in upcoming_raw.columns]
@@ -99,4 +108,11 @@ def build_real_moneyline_datasets(
         output_csv=Path(output_historical_merged_csv).with_name("model_dataset.csv"),
         recent_windows=recent_windows,
     )
-    return historical_merged, upcoming_merged, model_ready
+
+    summary = {
+        "historical_total_rows": int(len(historical_merged)),
+        "historical_matched_odds_rows": matched_rows,
+        "historical_unmatched_odds_rows": unmatched_rows,
+        "unmatched_debug_csv": str(debug_path),
+    }
+    return historical_merged, upcoming_merged, model_ready, summary

@@ -15,6 +15,7 @@ from src.features.build import add_features_with_history
 from src.features.elo import compute_elo_features, compute_elo_with_history
 from src.pricing.bankroll import recommend_stake
 from src.pricing.markets import price_match_winner_market
+from src.pricing.odds import decimal_to_american
 from src.utils.config import load_config
 
 
@@ -84,6 +85,9 @@ def main(config_path: str = "config/example_config.yaml"):
 
     priced = price_match_winner_market(upcoming_feat, model_prob_col="model_prob_p1")
 
+    priced["odds_american"] = priced["odds_p1"].apply(decimal_to_american)
+    priced["fair_odds_american"] = priced["fair_odds_decimal_p1"].apply(decimal_to_american)
+
     bankroll = cfg["bankroll"]["starting_bankroll"]
     priced["recommended_stake"] = priced.apply(
         lambda r: recommend_stake(
@@ -112,10 +116,10 @@ def main(config_path: str = "config/example_config.yaml"):
         "tournament",
         "player_1",
         "player_2",
-        "odds_p1",
+        "odds_american",
         "no_vig_prob_p1",
         "model_prob_p1",
-        "fair_odds_decimal_p1",
+        "fair_odds_american",
         "ev",
         "edge",
         "recommended_stake",

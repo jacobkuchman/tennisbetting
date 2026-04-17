@@ -214,9 +214,7 @@ def merge_results_with_odds(results_df: pd.DataFrame, odds_df: pd.DataFrame) -> 
         merged.loc[missing, "odds_p1"] = fallback["odds_p1"].values
         merged.loc[missing, "odds_p2"] = fallback["odds_p2"].values
 
-    if merged[["odds_p1", "odds_p2"]].isna().any().any():
-        miss = int(merged["odds_p1"].isna().sum())
-        raise ValueError(f"Missing odds for {miss} historical matches after matching.")
+    merged["odds_matched"] = merged[["odds_p1", "odds_p2"]].notna().all(axis=1)
 
     merged = merged.rename(columns={"player_1_norm": "player_1", "player_2_norm": "player_2"})
     keep_cols = [
@@ -232,6 +230,7 @@ def merge_results_with_odds(results_df: pd.DataFrame, odds_df: pd.DataFrame) -> 
         "p1_win",
         "odds_p1",
         "odds_p2",
+        "odds_matched",
     ]
     for c in keep_cols:
         if c not in merged.columns:

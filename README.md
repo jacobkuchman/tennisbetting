@@ -25,8 +25,9 @@ For quickest start without your own private feeds:
 3. Normalize players/tournaments/surfaces/dates
 4. Match odds to results (robust join with normalized keys + fallback)
 5. Validate duplicates/missing odds/impossible dates
-6. Export cleaned merged datasets
-7. Build leak-safe model dataset and run train/backtest/picks scripts
+6. Keep unmatched historical rows (for diagnostics) in `outputs/debug/unmatched_historical_results.csv`
+7. Export cleaned merged datasets
+8. Build leak-safe model dataset and run train/backtest/picks scripts
 
 ---
 
@@ -104,6 +105,7 @@ This will:
 - sort picks highest edge to lowest edge
 - print a clean terminal summary table
 - save to `outputs/picks/daily_picks.csv`
+- show sportsbook and fair odds in **American odds** format (`odds_american`, `fair_odds_american`)
 
 Config options (in `config/example_config.yaml`):
 - `daily_picks.include_atp`

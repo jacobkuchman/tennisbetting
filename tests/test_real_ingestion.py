@@ -56,3 +56,37 @@ def test_merge_results_odds_with_normalized_names():
 def test_schema_dataclasses_construct():
     _ = RealSchema("d", "t", "tr", "s", "r", "w", "l")
     _ = OddsSchema("d", "t", "tr", "p1", "p2", "o1", "o2")
+
+
+def test_merge_results_allows_unmatched_odds_rows():
+    results = pd.DataFrame(
+        {
+            "match_date": pd.to_datetime(["2024-01-01"]),
+            "tour": ["ATP"],
+            "tournament": ["Rome"],
+            "tournament_norm": ["rome"],
+            "surface": ["Clay"],
+            "round": ["R32"],
+            "winner_name": ["A"],
+            "loser_name": ["B"],
+            "winner_norm": ["a"],
+            "loser_norm": ["b"],
+            "player_1_norm": ["a"],
+            "player_2_norm": ["b"],
+            "p1_win": [1.0],
+        }
+    )
+    odds = pd.DataFrame(
+        {
+            "match_date": pd.to_datetime(["2024-01-01"]),
+            "tour": ["ATP"],
+            "tournament_norm": ["rome"],
+            "player_1_norm": ["x"],
+            "player_2_norm": ["y"],
+            "odds_p1": [1.9],
+            "odds_p2": [1.9],
+        }
+    )
+    merged = merge_results_with_odds(results, odds)
+    assert merged.loc[0, "odds_matched"] == False
+    assert pd.isna(merged.loc[0, "odds_p1"])
